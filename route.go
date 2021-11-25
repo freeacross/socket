@@ -18,6 +18,7 @@ func handleRequest(conn Conn, data []byte) {
 		pred := v[0]
 		act := v[1]
 		if pred.(IdentifyRequestF)(data) /*判断是否是对应注册的handle*/ {
+			log.Debugf("handleRequest:%+v", pred)
 			// yes, to handle this request.
 			result := act.(Controller).Handle(data)
 			_, err := writeResult(conn, result)
@@ -53,6 +54,7 @@ func (s *Socket) handle() {
 	for {
 		select {
 		case data := <-s.ReceiveChannel:
+			s.Log("receive one package that was unpacked")
 			s.setDeadline()
 			// handle request
 			handleRequest(s.conn, data)
@@ -96,7 +98,6 @@ func (s *Socket) HandleConnection() {
 	var tmpBuffer []byte
 
 	//声明一个管道用于接收解包的数据
-	readerChannel := make(chan []byte, 16)
 	go s.handle()
 
 	buffer := make([]byte, 1024)
@@ -117,7 +118,7 @@ func (s *Socket) HandleConnection() {
 			return
 		}
 		// 处理粘包
-		tmpBuffer = unpack(append(tmpBuffer, buffer[:n]...), readerChannel)
+		tmpBuffer = unpack(append(tmpBuffer, buffer[:n]...), s.ReceiveChannel)
 	}
 }
 
@@ -141,7 +142,7 @@ func Route(rule interface{}, controller Controller) {
 		}
 		// TODO 增加更人性化的路由选择
 	default:
-		Log("Something is wrong in Router")
+		Log("Something is wrong in Router:%!+v", rule)
 	}
 }
 

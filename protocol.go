@@ -4,6 +4,7 @@ package socket
 import (
 	"bytes"
 	"encoding/binary"
+	log "github.com/sirupsen/logrus"
 )
 
 // TODO modify
@@ -36,6 +37,7 @@ func unpack(buffer []byte, readerChannel chan []byte) []byte {
 			} else {
 				data := buffer[i+constHeaderLength : i+constHeaderLength+index]
 				readerChannel <- data
+				log.Debugln("------>", string(data))
 				i += constHeaderLength + index
 				//back step
 				i--
