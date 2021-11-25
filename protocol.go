@@ -25,19 +25,20 @@ func unpack(buffer []byte, readerChannel chan []byte) []byte {
 	length := len(buffer)
 
 	var i int
-	for i = 0; i < length; i = i + 1 {
-		if length < i+constHeaderLength{
+	for i = 0; i < length; i++ {
+		if length <= i+constHeaderLength {
 			break
 		}
 		if string(buffer[i:i+constHeaderLength]) == constHeader {
 			// 进入正文
-			if index := bytes.Index(buffer[i+constHeaderLength:], []byte(constTail)); index == -1{
+			if index := bytes.Index(buffer[i+constHeaderLength:], []byte(constTail)); index == -1 {
 				break
-			}else{
-				// TODO test
+			} else {
 				data := buffer[i+constHeaderLength : i+constHeaderLength+index]
 				readerChannel <- data
-				i += constHeaderLength + index + constTailLength
+				i += constHeaderLength + index
+				//back step
+				i--
 			}
 		}
 	}
@@ -45,6 +46,7 @@ func unpack(buffer []byte, readerChannel chan []byte) []byte {
 	if i == length {
 		return make([]byte, 0)
 	}
+
 	return buffer[i:]
 }
 

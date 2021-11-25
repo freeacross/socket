@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"time"
@@ -39,7 +39,7 @@ func init() {
 }
 
 func main() {
-	netListen, err := net.Listen("tcp", "localhost:6060")
+	netListen, err := net.Listen("tcp", "localhost:8080")
 	CheckError(err)
 	defer netListen.Close()
 	Log("Waiting for clients")
@@ -50,6 +50,6 @@ func main() {
 		}
 		Log(conn.RemoteAddr().String(), " tcp connect success")
 		// 如果此链接超过6秒没有发送新的数据，将被关闭
-		go socket.HandleConnection(socket.Conn{conn}, 6)
+		go socket.NewSocket("server", socket.Conn{conn}, -1).HandleConnection()
 	}
 }
