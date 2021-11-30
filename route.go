@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -12,16 +13,16 @@ import (
 type IdentifyRequestF func(requestData []byte) bool
 
 // handle request
-func handleRequest(conn Conn, data []byte) {
+func (s *Socket) handleRequest(conn *Conn, data []byte) {
 
-	for _, v := range Routers {
+	for _, v := range s.Routers {
 		pred := v[0]
 		act := v[1]
 		if pred.(IdentifyRequestF)(data) /*判断是否是对应注册的handle*/ {
 			log.Debugf("handleRequest:%+v", pred)
 			// yes, to handle this request.
 			result := act.(Controller).Handle(data)
-			_, err := writeResult(conn, result)
+			_, err := writeResult(*conn, result)
 			if err != nil {
 				Log("conn.WriteResult()", err)
 			}
@@ -29,14 +30,14 @@ func handleRequest(conn Conn, data []byte) {
 		}
 	}
 
-	_, err := writeError(conn, "1111", "不能处理此类型的业务")
+	_, err := writeError(*conn, "1111", []byte("不能处理此类型的业务"))
 	if err != nil {
 		log.Errorf("origin:[%s];conn.WriteError:%v", string(data), err)
 	}
 }
 
 func (s *Socket) click() <-chan time.Time {
-	// block ever ever
+	// block forever
 	if s.timeout == -1 {
 		return nil
 	}
@@ -45,9 +46,14 @@ func (s *Socket) click() <-chan time.Time {
 
 func (s *Socket) setDeadline() {
 	if s.timeout == -1 {
+		if err := s.conn.SetReadDeadline(time.Now().Add(time.Duration(2) * time.Second)); err != nil {
+			log.Warn(err)
+		}
 		return
 	}
-	s.conn.SetDeadline(time.Now().Add(time.Duration(s.timeout) * time.Second))
+	if err := s.conn.SetDeadline(time.Now().Add(time.Duration(s.timeout) * time.Second)); err != nil {
+		log.Warn(err)
+	}
 }
 
 func (s *Socket) handle() {
@@ -57,7 +63,7 @@ func (s *Socket) handle() {
 			s.Log("receive one package that was unpacked")
 			s.setDeadline()
 			// handle request
-			handleRequest(s.conn, data)
+			s.handleRequest(s.conn, data)
 			break
 		case <-s.click():
 			s.conn.Close()
@@ -67,21 +73,44 @@ func (s *Socket) handle() {
 	}
 }
 
-func NewSocket(name string, conn Conn, timeout int) *Socket {
+type ISocket interface {
+	HandleConnection()
+	WriteData(data []byte) (n int, err error)
+	SetRoute(Routers [][2]interface{})
+}
+
+func NewSocket(ctx context.Context, name string, conn *Conn, timeout int, Routers [][2]interface{}) *Socket {
+
+	if ctx == nil {
+		panic("nil context")
+	}
 	var socket = Socket{
+		ctx:            ctx,
 		conn:           conn,
 		timeout:        timeout,
 		Name:           name,
 		ReceiveChannel: make(chan []byte, 16),
 	}
+	socket.Routers = Routers
+	if socket.Routers == nil {
+		socket.Routers = make([][2]interface{}, 0)
+	}
 	return &socket
 }
 
 type Socket struct {
-	conn           Conn
+	conn           *Conn
 	timeout        int // -1:表示不超时
 	Name           string
 	ReceiveChannel chan []byte
+	ctx            context.Context
+	// Routers 路由
+	// 二维数组:第二个为对应的处理程序；第一个为判断此请求是否是需要处理的
+	Routers [][2]interface{}
+}
+
+func (s *Socket) SetRoute(Routers [][2]interface{}) {
+	s.Routers = Routers
 }
 
 func (s *Socket) WriteData(data []byte) (n int, err error) {
@@ -104,48 +133,32 @@ func (s *Socket) HandleConnection() {
 
 	// 开始循环读数据
 	for {
-		n, err := s.conn.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				//s.Log("reading EOF")
-				continue
+		select {
+		case <-s.ctx.Done():
+			if err := s.conn.Close(); err != nil {
+				log.Error(err)
 			}
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				Log("exit goroutine.")
+			return
+		default:
+			n, err := s.conn.Read(buffer)
+			if err != nil {
+				if err == io.EOF {
+					//s.Log("reading EOF")
+					continue
+				}
+				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+					Log(s.Name + ":exit goroutine.")
+					return
+				}
+				s.Log(s.conn.RemoteAddr().String(), " connection error: ", err, reflect.TypeOf(err))
 				return
 			}
-			s.Log(s.conn.RemoteAddr().String(), " connection error: ", err, reflect.TypeOf(err))
-			return
+			// 处理粘包
+			tmpBuffer = unpack(append(tmpBuffer, buffer[:n]...), s.ReceiveChannel)
 		}
-		// 处理粘包
-		tmpBuffer = unpack(append(tmpBuffer, buffer[:n]...), s.ReceiveChannel)
 	}
 }
 
 func Log(v ...interface{}) {
 	log.Println(v...)
-}
-
-// Routers 路由
-// 二维数组:第二个为对应的处理程序；第一个为判断此请求是否是需要处理的
-var Routers [][2]interface{}
-
-// Route 路由注册
-func Route(rule interface{}, controller Controller) {
-	switch rule.(type) {
-	case IdentifyRequestF:
-		{
-			var arr [2]interface{}
-			arr[0] = rule
-			arr[1] = controller
-			Routers = append(Routers, arr)
-		}
-		// TODO 增加更人性化的路由选择
-	default:
-		Log("Something is wrong in Router:%!+v", rule)
-	}
-}
-
-func init() {
-	Routers = make([][2]interface{}, 0, 10)
 }

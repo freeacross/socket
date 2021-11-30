@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	log "github.com/sirupsen/logrus"
-	"net"
 	"os"
 	"time"
 
@@ -31,25 +31,18 @@ func Log(v ...interface{}) {
 	log.Println(v...)
 }
 
-func init() {
+func main() {
+	s := socket.NewServer(
+		socket.Name("client"),
+		socket.Ctx(context.Background()),
+		socket.NetworkAddress("tcp", "localhost:6060"),
+		socket.Timeout(-1),
+	)
+
 	var controller Controller
 	kvs := make(map[string]string)
 	kvs["msgType"] = "send SMS"
-	socket.Route(kvs, &controller)
-}
+	s.Route(kvs, &controller)
 
-func main() {
-	netListen, err := net.Listen("tcp", "localhost:8080")
-	CheckError(err)
-	defer netListen.Close()
-	Log("Waiting for clients")
-	for {
-		conn, err := netListen.Accept()
-		if err != nil {
-			continue
-		}
-		Log(conn.RemoteAddr().String(), " tcp connect success")
-		// 如果此链接超过6秒没有发送新的数据，将被关闭
-		go socket.NewSocket("server", socket.Conn{conn}, -1).HandleConnection()
-	}
+	s.Run()
 }
