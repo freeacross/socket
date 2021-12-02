@@ -27,6 +27,7 @@ func NewServer(t ...ServerParameterTemplate) *Server {
 type Server struct {
 	_socket          socket.ISocket
 	_listen          net.Listener
+	isStop           bool
 	ctx              context.Context
 	name             string
 	timeout          int
@@ -60,6 +61,9 @@ func (s *Server) Run() {
 		s.ctx = context.Background()
 	}
 	for {
+		if s.isStop {
+			break
+		}
 		log.Info("Waiting for clients")
 		conn, err := s._listen.Accept()
 		if err != nil {
@@ -72,8 +76,10 @@ func (s *Server) Run() {
 	}
 }
 
-func (s *Server) Close() {
-	s._listen.Close()
+func (s *Server) Close() error {
+	log.Infof("%s-%s: ready to exist\n", s.name, s._listen.Addr().String())
+	s.isStop = true
+	return s._listen.Close()
 }
 
 type ServerParameterTemplate func(s *Server)

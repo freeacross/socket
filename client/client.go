@@ -28,6 +28,7 @@ func NewClient(t ...ClientParameterTemplate) *Client {
 type Client struct {
 	_socket          socket.ISocket
 	_listen          net.Conn
+	isStop           bool
 	ctx              context.Context
 	name             string
 	timeout          int
@@ -61,6 +62,9 @@ func (c *Client) Run() {
 		c.ctx = context.Background()
 	}
 	for {
+		if c.isStop {
+			break
+		}
 		log.Info("Waiting for clients")
 
 		log.Infoln(c._listen.RemoteAddr().String(), " tcp connect success")
@@ -75,6 +79,9 @@ func (c *Client) WriteData(data []byte) (n int, err error) {
 }
 
 func (c *Client) Close() error {
+	log.Infof("%s-%s: ready to exist\n", c.name, c._listen.RemoteAddr().String())
+
+	c.isStop = true
 	return c._listen.Close()
 }
 

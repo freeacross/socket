@@ -148,7 +148,7 @@ func (s *Socket) HandleConnection() {
 					continue
 				}
 				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-					Log(s.Name + ":exit goroutine.")
+					log.Infof(s.Name + ":exit goroutine.")
 					return
 				}
 				s.Log(s.conn.RemoteAddr().String(), " connection error: ", err, reflect.TypeOf(err))
