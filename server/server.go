@@ -5,6 +5,7 @@ import (
 	"github.com/freeacross/socket"
 	log "github.com/sirupsen/logrus"
 	"net"
+	"reflect"
 )
 
 func NewServer(t ...ServerParameterTemplate) *Server {
@@ -42,17 +43,17 @@ type Server struct {
 
 // Route 路由注册
 func (s *Server) Route(rule interface{}, controller socket.Controller) {
-	switch rule.(type) {
-	case socket.IdentifyRequestF:
-		{
-			var arr [2]interface{}
-			arr[0] = rule
-			arr[1] = controller
-			s.Routers = append(s.Routers, arr)
+	if reflect.TypeOf(rule).Implements(socket.FILTERITERN) {
+		var arr [2]interface{}
+		arr[0] = rule
+		arr[1] = controller
+		s.Routers = append(s.Routers, arr)
+	} else {
+		switch rule.(type) {
+		default:
+			// TODO 增加更人性化的路由选择
+			log.Error("Something is wrong in Router:%!+v", rule)
 		}
-		// TODO 增加更人性化的路由选择
-	default:
-		log.Error("Something is wrong in Router:%!+v", rule)
 	}
 }
 

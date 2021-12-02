@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type IdentifyRequestF func(requestData []byte) bool
+//type IdentifyRequestF func(requestData []byte) bool
 
 // handle request
 func (s *Socket) handleRequest(conn *Conn, data []byte) {
@@ -18,7 +18,7 @@ func (s *Socket) handleRequest(conn *Conn, data []byte) {
 	for _, v := range s.Routers {
 		pred := v[0]
 		act := v[1]
-		if pred.(IdentifyRequestF)(data) /*判断是否是对应注册的handle*/ {
+		if f, ok := pred.(Filter); ok && f.MyselfRequest(data) /*判断是否是对应注册的handle*/ {
 			log.Debugf("handleRequest:%+v", pred)
 			// yes, to handle this request.
 			result := act.(Controller).Handle(data)
@@ -29,7 +29,7 @@ func (s *Socket) handleRequest(conn *Conn, data []byte) {
 			return
 		}
 	}
-
+	log.Warnf("%s: can't handle this request", s.Name)
 	_, err := writeError(*conn, "1111", []byte("不能处理此类型的业务"))
 	if err != nil {
 		log.Errorf("origin:[%s];conn.WriteError:%v", string(data), err)

@@ -5,6 +5,7 @@ import (
 	"github.com/freeacross/socket"
 	log "github.com/sirupsen/logrus"
 	"net"
+	"reflect"
 )
 
 func NewClient(t ...ClientParameterTemplate) *Client {
@@ -13,14 +14,6 @@ func NewClient(t ...ClientParameterTemplate) *Client {
 
 	if c.ctx == nil {
 		c.ctx = context.Background()
-	}
-	var (
-		err error
-	)
-
-	c._listen, err = net.Dial(c.network, c.address)
-	if err != nil {
-		panic(err)
 	}
 	return c
 }
@@ -43,23 +36,31 @@ type Client struct {
 
 // Route 路由注册
 func (c *Client) Route(rule interface{}, controller socket.Controller) {
-	switch rule.(type) {
-	case socket.IdentifyRequestF:
-		{
-			var arr [2]interface{}
-			arr[0] = rule
-			arr[1] = controller
-			c.Routers = append(c.Routers, arr)
+	if reflect.TypeOf(rule).Implements(socket.FILTERITERN) {
+		var arr [2]interface{}
+		arr[0] = rule
+		arr[1] = controller
+		c.Routers = append(c.Routers, arr)
+	} else {
+		switch rule.(type) {
+		default:
+			// TODO 增加更人性化的路由选择
+			log.Error("Something is wrong in Router:%!+v", rule)
 		}
-		// TODO 增加更人性化的路由选择
-	default:
-		log.Error("Something is wrong in Router:%!+v", rule)
 	}
 }
 
 func (c *Client) Run() {
 	if c.ctx == nil {
 		c.ctx = context.Background()
+	}
+	var (
+		err error
+	)
+
+	c._listen, err = net.Dial(c.network, c.address)
+	if err != nil {
+		panic(err)
 	}
 	for {
 		if c.isStop {
