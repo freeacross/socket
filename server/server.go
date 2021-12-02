@@ -1,7 +1,8 @@
-package socket
+package server
 
 import (
 	"context"
+	"github.com/freeacross/socket"
 	log "github.com/sirupsen/logrus"
 	"net"
 )
@@ -24,7 +25,7 @@ func NewServer(t ...ServerParameterTemplate) *Server {
 }
 
 type Server struct {
-	_socket          ISocket
+	_socket          socket.ISocket
 	_listen          net.Listener
 	ctx              context.Context
 	name             string
@@ -39,9 +40,9 @@ type Server struct {
 //}
 
 // Route 路由注册
-func (s *Server) Route(rule interface{}, controller Controller) {
+func (s *Server) Route(rule interface{}, controller socket.Controller) {
 	switch rule.(type) {
-	case IdentifyRequestF:
+	case socket.IdentifyRequestF:
 		{
 			var arr [2]interface{}
 			arr[0] = rule
@@ -50,7 +51,7 @@ func (s *Server) Route(rule interface{}, controller Controller) {
 		}
 		// TODO 增加更人性化的路由选择
 	default:
-		Log("Something is wrong in Router:%!+v", rule)
+		log.Error("Something is wrong in Router:%!+v", rule)
 	}
 }
 
@@ -66,7 +67,7 @@ func (s *Server) Run() {
 		}
 		log.Infoln(conn.RemoteAddr().String(), " tcp connect success")
 		// 如果此链接超过60秒没有发送新的数据，将被关闭
-		s._socket = NewSocket(s.ctx, "Server", &Conn{conn}, s.timeout, s.Routers)
+		s._socket = socket.NewSocket(s.ctx, "Server", &socket.Conn{conn}, s.timeout, s.Routers)
 		go s._socket.HandleConnection()
 	}
 }

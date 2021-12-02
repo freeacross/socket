@@ -138,6 +138,7 @@ func (s *Socket) HandleConnection() {
 			if err := s.conn.Close(); err != nil {
 				log.Error(err)
 			}
+			log.Infof("%s-%s: ready to exist", s.Name, s.conn.RemoteAddr().String())
 			return
 		default:
 			n, err := s.conn.Read(buffer)

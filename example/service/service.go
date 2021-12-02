@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/freeacross/socket/server"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
-
-	"github.com/freeacross/socket"
 )
 
 type Controller struct {
@@ -32,11 +31,11 @@ func Log(v ...interface{}) {
 }
 
 func main() {
-	s := socket.NewServer(
-		socket.Name("client"),
-		socket.Ctx(context.Background()),
-		socket.NetworkAddress("tcp", "localhost:6060"),
-		socket.Timeout(-1),
+	s := server.NewServer(
+		server.Name("client"),
+		server.Ctx(context.Background()),
+		server.NetworkAddress("tcp", "localhost:6060"),
+		server.Timeout(-1),
 	)
 
 	var controller Controller
