@@ -51,6 +51,9 @@ func (c *Client) Route(rule interface{}, controller socket.Controller) {
 }
 
 func (c *Client) Run() {
+	if c.isStop {
+		return
+	}
 	if c.ctx == nil {
 		c.ctx = context.Background()
 	}
@@ -81,7 +84,9 @@ func (c *Client) WriteData(data []byte) (n int, err error) {
 
 func (c *Client) Close() error {
 	log.Infof("%s-%s: ready to exist\n", c.name, c._listen.RemoteAddr().String())
-
+	if c.isStop {
+		return nil
+	}
 	c.isStop = true
 	return c._listen.Close()
 }

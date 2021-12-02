@@ -15,13 +15,6 @@ func NewServer(t ...ServerParameterTemplate) *Server {
 	if s.ctx == nil {
 		s.ctx = context.Background()
 	}
-	var (
-		err error
-	)
-	s._listen, err = net.Listen(s.network, s.address)
-	if err != nil {
-		panic(err)
-	}
 	return s
 }
 
@@ -58,9 +51,21 @@ func (s *Server) Route(rule interface{}, controller socket.Controller) {
 }
 
 func (s *Server) Run() {
+	if s.isStop {
+		return
+	}
 	if s.ctx == nil {
 		s.ctx = context.Background()
 	}
+
+	var (
+		err error
+	)
+	s._listen, err = net.Listen(s.network, s.address)
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		if s.isStop {
 			break
@@ -79,6 +84,9 @@ func (s *Server) Run() {
 
 func (s *Server) Close() error {
 	log.Infof("%s-%s: ready to exist\n", s.name, s._listen.Addr().String())
+	if s.isStop {
+		return nil
+	}
 	s.isStop = true
 	return s._listen.Close()
 }
