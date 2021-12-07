@@ -82,6 +82,10 @@ func (s *Server) Run() {
 	}
 }
 
+func (s *Server) WriteData(data []byte) (n int, err error) {
+	return s._socket.WriteData(data)
+}
+
 func (s *Server) Close() error {
 	log.Infof("%s-%s: ready to exist\n", s.name, s._listen.Addr().String())
 	if s.isStop {

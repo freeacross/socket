@@ -15,12 +15,15 @@ func (c Conn) WriteData(data []byte) (n int, err error) {
 
 // writeResult 向client写入结果
 func writeResult(conn Conn, result interface{}) (n int, err error) {
-	return conn.Write(result.([]byte))
+	if result == nil {
+		return 0, nil
+	}
+	return conn.Write(packet(result.([]byte)))
 }
 
 // writeError 向client写入错误
 func writeError(conn Conn, statusCode string, result interface{}) (n int, err error) {
-	return conn.Write(result.([]byte))
+	return conn.Write(packet(result.([]byte)))
 }
 
 // Dial connects to the address on the named network.

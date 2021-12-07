@@ -37,6 +37,7 @@ type Client struct {
 // Route 路由注册
 func (c *Client) Route(rule interface{}, controller socket.Controller) {
 	if reflect.TypeOf(rule).Implements(socket.FILTERITERN) {
+		log.Debugf("ready to regist router")
 		var arr [2]interface{}
 		arr[0] = rule
 		arr[1] = controller
@@ -45,7 +46,7 @@ func (c *Client) Route(rule interface{}, controller socket.Controller) {
 		switch rule.(type) {
 		default:
 			// TODO 增加更人性化的路由选择
-			log.Error("Something is wrong in Router:%!+v", rule)
+			log.Error("%s: Something is wrong in Router:%!+v", c.name, rule)
 		}
 	}
 }
@@ -69,7 +70,7 @@ func (c *Client) Run() {
 		if c.isStop {
 			break
 		}
-		log.Info("Waiting for clients")
+		log.Info("ready to connect server")
 
 		log.Infoln(c._listen.RemoteAddr().String(), " tcp connect success")
 		// 如果此链接超过60秒没有发送新的数据，将被关闭

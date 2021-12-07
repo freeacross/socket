@@ -22,9 +22,11 @@ func (s *Socket) handleRequest(conn *Conn, data []byte) {
 			log.Debugf("handleRequest:%+v", pred)
 			// yes, to handle this request.
 			result := act.(Controller).Handle(data)
-			_, err := writeResult(*conn, result)
+			n, err := writeResult(*conn, result)
 			if err != nil {
-				Log("conn.WriteResult()", err)
+				log.Errorf("response to the peer message; error:%+v", err)
+			} else {
+				log.Debugf("response to the peer message length:%d", n)
 			}
 			return
 		}
@@ -46,7 +48,7 @@ func (s *Socket) click() <-chan time.Time {
 
 func (s *Socket) setDeadline() {
 	if s.timeout == -1 {
-		if err := s.conn.SetReadDeadline(time.Now().Add(time.Duration(2) * time.Second)); err != nil {
+		if err := s.conn.SetReadDeadline(time.Time{}); err != nil {
 			log.Warn(err)
 		}
 		return

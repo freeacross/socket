@@ -43,5 +43,10 @@ func main() {
 	kvs["msgType"] = "send SMS"
 	s.Route(kvs, &controller)
 
+	go func() {
+		time.Sleep(5 * time.Second)
+		s.Routers.WriteData([]byte("hello server, I'm client"))
+	}()
+
 	s.Run()
 }
